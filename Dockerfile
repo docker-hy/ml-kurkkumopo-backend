@@ -2,7 +2,7 @@ FROM python:3.6.7-slim
 
 WORKDIR /src
 
-COPY . /src
+COPY . .
 
 RUN pip install --upgrade pip
 
