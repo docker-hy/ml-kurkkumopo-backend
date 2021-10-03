@@ -1,14 +1,11 @@
 from flask import Flask, jsonify, request
-
 from dotenv import load_dotenv
 import os
-import pickle
 import numpy as np
 import tensorflow as tf
-from PIL import Image
-from scipy.misc import imresize
-import imageio
-from keras import backend
+from tensorflow import keras
+from tensorflow.keras import layers
+import cv2
 from flask_cors import CORS, cross_origin
 from io import BytesIO
 import time
@@ -23,12 +20,20 @@ def ping():
 
 @app.route('/kurkkuvaimopo', methods=["POST"])
 def test():
-  data = request.files.get('img', '')
-  data = imageio.imread(data, pilmode="RGB")
-  data = imresize(data, (128,128))
-  with backend.get_session().graph.as_default() as g:
-      res = model.predict(np.array(data).reshape(1, 128, 128, 3))
-  return str(res[0][0])
+  try:
+    data = request.files.get('img').read()
+    npimg = np.fromstring(data, np.uint8)
+    img = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
+    img = cv2.resize(img, (128,128))
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    res = model(np.array(img).reshape(1, 128, 128, 3), training=False)
+  except Exception as e:
+    print(str(e))
+    return str(e), 500
+
+  return str(res[0][0].numpy())
 
 
 if __name__ == '__main__':
@@ -42,11 +47,11 @@ if __name__ == '__main__':
   boolean_print = False
   while True:
     try:
-      model = pickle.load(open('./model/kurkkumopotin.sav', 'rb'))
+      model = keras.models.load_model("./model/model")
       break
     except:
       if not boolean_print:
-        print("No 'kurkkumopotin.sav' model in the model volume. Waiting for training service to provide one.")
+        print("No model in the model volume. Waiting for training service to provide one.")
         boolean_print = True
       time.sleep(5)
       continue
